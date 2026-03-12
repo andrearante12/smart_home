@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lumina Home Control</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card-bg: rgba(255, 255, 255, 0.05);
+            --accent: #38bdf8;
+            --warm: #fbbf24;
+            --cool: #60a5fa;
+            --text: #f8fafc;
+            --danger: #ef4444;
+            --success: #10b981;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            background-image: radial-gradient(circle at top right, #1e293b, #0f172a);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        .all-lamps-card {
+            grid-column: 1 / -1;
+            background: rgba(56, 189, 248, 0.1);
+            border: 1px solid rgba(56, 189, 248, 0.2);
+            text-align: center;
+        }
+
+        .button-grid {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        h1 { font-weight: 300; letter-spacing: 4px; color: var(--accent); margin-bottom: 30px; }
+        h2 { margin: 0 0 15px 0; font-size: 1rem; text-transform: uppercase; letter-spacing: 2px; opacity: 0.9; }
+
+        button {
+            padding: 14px 24px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            min-width: 110px;
+        }
+
+        .btn-default { background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.2); }
+        .btn-warm { background: var(--warm); color: #451a03; }
+        .btn-cool { background: var(--cool); color: #1e3a8a; }
+        .btn-on { background: var(--success); color: white; }
+        .btn-off { background: var(--danger); color: white; }
+        
+        button:hover { filter: brightness(1.1); transform: translateY(-1px); }
+        button:active { transform: translateY(0); }
+
+        .control-group { margin: 20px 0; }
+        .label-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.8rem; opacity: 0.6; }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 4px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 5px;
+            outline: none;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: var(--accent);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>LUMINA</h1>
+
+    <div class="container">
+        <div class="card all-lamps-card">
+            <h2>All Lamps</h2>
+            <div class="button-grid">
+                <button class="btn-on" onclick="sendAll('state', 'ON')">On</button>
+                <button class="btn-off" onclick="sendAll('state', 'OFF')">Off</button>
+                <button class="btn-cool" onclick="applyToAll(254, 150)">Cool</button>
+                <button class="btn-warm" onclick="applyToAll(254, 500)">Warm</button>
+                <button class="btn-default" onclick="applyToAll(254, 500)">Default</button>
+            </div>
+        </div>
+
+        <script>
+            [1, 2, 3].forEach(id => {
+                document.write(`
+                    <div class="card">
+                        <h2>Lamp ${id}</h2>
+                        <div style="display:flex; gap:10px; margin-bottom:20px;">
+                            <button class="btn-on" style="flex:1" onclick="send(${id}, 'state', 'ON')">On</button>
+                            <button class="btn-off" style="flex:1" onclick="send(${id}, 'state', 'OFF')">Off</button>
+                        </div>
+                        <div class="control-group">
+                            <div class="label-row"><span>Brightness</span><span id="bri-val-${id}">100%</span></div>
+                            <input type="range" id="bri-${id}" min="0" max="254" value="254" oninput="updateLabel(${id}, this.value)" onchange="send(${id}, 'brightness', this.value)">
+                        </div>
+                        <div class="control-group">
+                            <div class="label-row"><span>Cool</span><span>Warm</span></div>
+                            <input type="range" id="temp-${id}" min="150" max="500" value="500" onchange="send(${id}, 'color_temp', this.value)">
+                        </div>
+                    </div>
+                `);
+            });
+        </script>
+    </div>
+
+    <script>
+        function send(id, action, val) {
+            fetch('/control', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({lamp_id: id, action: action, value: val})
+            });
+        }
+
+        function sendAll(action, val) {
+            [1, 2, 3].forEach(id => send(id, action, val));
+        }
+
+        function applyToAll(bri, temp) {
+            [1, 2, 3].forEach(id => {
+                send(id, 'state', 'ON');
+                send(id, 'brightness', bri);
+                send(id, 'color_temp', temp);
+                
+                // Sync UI
+                document.getElementById(`bri-${id}`).value = bri;
+                document.getElementById(`temp-${id}`).value = temp;
+                updateLabel(id, bri);
+            });
+        }
+
+        function updateLabel(id, val) {
+            const percent = Math.round((val / 254) * 100);
+            document.getElementById(`bri-val-${id}`).innerText = percent + '%';
+        }
+
+        window.onload = () => {
+            [1, 2, 3].forEach(id => updateLabel(id, 254));
+        };
+    </script>
+</body>
+</html>
